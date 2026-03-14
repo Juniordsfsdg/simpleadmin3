@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Players — SimpleAdmin{% endblock %}
+{% block page_title %}Players{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Live Players</div>
+    <div style="display:flex;gap:.5rem">
+      <input type="text" id="searchInput" placeholder="Search players…" style="width:200px" oninput="renderTable()">
+      <button class="btn btn-ghost btn-sm" onclick="refreshPlayers()">↻ Refresh</button>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Player</th><th>User ID</th><th>Level</th><th>Ping</th><th>Health</th><th>Time</th><th>Actions</th></tr></thead>
+      <tbody id="playerTable"><tr><td colspan="7" class="empty-state">Waiting for game data…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- KICK MODAL -->
+<div class="modal-overlay" id="kickModal">
+  <div class="modal">
+    <div class="modal-title">👢 Kick Player</div>
+    <input type="hidden" id="kickUserId"><input type="hidden" id="kickUsername">
+    <div class="form-group"><label class="form-label">Player</label><input type="text" id="kickDisplayName" readonly style="opacity:.6"></div>
+    <div class="form-group"><label class="form-label">Reason</label><input type="text" id="kickReason" placeholder="Enter reason…"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('kickModal')">Cancel</button>
+      <button class="btn btn-orange" onclick="doKick()">Kick Player</button>
+    </div>
+  </div>
+</div>
+
+<!-- BAN MODAL -->
+<div class="modal-overlay" id="banModal">
+  <div class="modal">
+    <div class="modal-title">🔨 Ban Player</div>
+    <input type="hidden" id="banUserId"><input type="hidden" id="banUsername">
+    <div class="form-group"><label class="form-label">Player</label><input type="text" id="banDisplayName" readonly style="opacity:.6"></div>
+    <div class="form-group"><label class="form-label">Reason</label><input type="text" id="banReason" placeholder="Enter reason…"></div>
+    <div style="background:rgba(255,61,90,.06);border:1px solid rgba(255,61,90,.2);border-radius:4px;padding:.75rem;font-family:'DM Mono',monospace;font-size:.72rem;color:var(--red);margin-bottom:.5rem;">⚠ Removes from group and bans in-game.</div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('banModal')">Cancel</button>
+      <button class="btn btn-danger" onclick="doBan()">Confirm Ban</button>
+    </div>
+  </div>
+</div>
+
+<!-- CMD MODAL -->
+<div class="modal-overlay" id="cmdModal">
+  <div class="modal">
+    <div class="modal-title">⌘ Run Command</div>
+    <input type="hidden" id="cmdUserId"><input type="hidden" id="cmdUsername">
+    <div class="form-group"><label class="form-label">Target</label><input type="text" id="cmdDisplayName" readonly style="opacity:.6"></div>
+    <div class="form-group"><label class="form-label">Command</label>
+      <select id="cmdSelect" onchange="updateCmdArgs()"><option value="">— select command —</option></select>
+    </div>
+    <div id="cmdArgsArea"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('cmdModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="doCommand()">Run</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let allPlayers=[];
+const allCommands={{ commands|tojson }};
+
+// Populate command dropdown
+const sel=document.getElementById('cmdSelect');
+allCommands.forEach(c=>{if(!c.disabled){const o=document.createElement('option');o.value=c.name;o.textContent=c.name+(c.description?' — '+c.description.slice(0,35):'');o.dataset.args=JSON.stringify(c.args||[]);sel.appendChild(o);}});
+
+function updateCmdArgs(){
+  const opt=sel.options[sel.selectedIndex];
+  const area=document.getElementById('cmdArgsArea');
+  if(!opt||!opt.dataset.args){area.innerHTML='';return;}
+  const args=JSON.parse(opt.dataset.args||'[]');
+  area.innerHTML=args.filter(a=>a.type!=='player').map(a=>`<div class="form-group"><label class="form-label">${a.name} (${a.type})</label><input type="text" id="arg_${a.name}" placeholder="${a.default||''}"></div>`).join('');
+}
+
+async function refreshPlayers(){
+  const d=await fetch('/api/players').then(r=>r.json());
+  allPlayers=d.players||[];
+  renderTable();
+}
+
+function renderTable(){
+  const q=document.getElementById('searchInput').value.toLowerCase();
+  const filtered=allPlayers.filter(p=>(p.name||'').toLowerCase().includes(q)||String(p.userId||'').includes(q));
+  const tb=document.getElementById('playerTable');
+  if(!filtered.length){tb.innerHTML='<tr><td colspan="7" class="empty-state">No players found.</td></tr>';return;}
+  const lvlN=['Guest','Donator','Mod','Admin','Owner','Dev'];
+  const lvlC=['badge-green','badge-yellow','badge-blue','badge-blue','badge-orange','badge-red'];
+  tb.innerHTML=filtered.map(p=>`<tr>
+    <td><div style="display:flex;align-items:center;gap:.6rem"><div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-family:'Orbitron',sans-serif;font-size:.55rem;font-weight:800;color:#000">${(p.name||'?')[0].toUpperCase()}</div><span style="font-weight:600;color:var(--white)">${p.name||'?'}</span></div></td>
+    <td class="mono" style="color:var(--text2)">${p.userId||'?'}</td>
+    <td><span class="badge ${lvlC[p.level||0]||'badge-green'}">${lvlN[p.level||0]||'Guest'}</span></td>
+    <td class="mono">${p.ping!=null?Math.ceil(p.ping)+'ms':'—'}</td>
+    <td><div style="display:flex;align-items:center;gap:.4rem"><div style="height:5px;width:55px;background:var(--border);border-radius:3px;overflow:hidden"><div style="height:100%;width:${p.health||0}%;background:${(p.health||0)>60?'var(--green)':(p.health||0)>30?'var(--yellow)':'var(--red)'}"></div></div><span class="mono" style="font-size:.68rem">${p.health!=null?Math.round(p.health):'—'}</span></div></td>
+    <td class="mono" style="color:var(--text2)">${p.serverTime!=null?Math.round(p.serverTime)+'m':'—'}</td>
+    <td><div style="display:flex;gap:.3rem;flex-wrap:wrap">
+      <button class="btn btn-orange btn-xs" onclick="openKick(${p.userId},'${(p.name||'').replace(/'/g,"\\'")}')">Kick</button>
+      <button class="btn btn-danger btn-xs" onclick="openBan(${p.userId},'${(p.name||'').replace(/'/g,"\\'")}')">Ban</button>
+      <button class="btn btn-primary btn-xs" onclick="openCmd(${p.userId},'${(p.name||'').replace(/'/g,"\\'")}')">Cmd</button>
+    </div></td>
+  </tr>`).join('');
+}
+
+function openKick(uid,name){document.getElementById('kickUserId').value=uid;document.getElementById('kickUsername').value=name;document.getElementById('kickDisplayName').value=name;document.getElementById('kickReason').value='';openModal('kickModal');}
+function openBan(uid,name){document.getElementById('banUserId').value=uid;document.getElementById('banUsername').value=name;document.getElementById('banDisplayName').value=name;document.getElementById('banReason').value='';openModal('banModal');}
+function openCmd(uid,name){document.getElementById('cmdUserId').value=uid;document.getElementById('cmdUsername').value=name;document.getElementById('cmdDisplayName').value=name;document.getElementById('cmdArgsArea').innerHTML='';openModal('cmdModal');}
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
+
+async function doKick(){const d=await apiPost('/api/kick',{userId:+document.getElementById('kickUserId').value,username:document.getElementById('kickUsername').value,reason:document.getElementById('kickReason').value||'Kicked by admin'});toast(d.message,d.ok?'ok':'err');closeModal('kickModal');setTimeout(refreshPlayers,1500);}
+async function doBan(){const d=await apiPost('/api/ban',{userId:+document.getElementById('banUserId').value,username:document.getElementById('banUsername').value,reason:document.getElementById('banReason').value||'Banned by admin'});toast(d.message,d.ok?'ok':'err');closeModal('banModal');setTimeout(refreshPlayers,1500);}
+async function doCommand(){
+  const cmd=sel.value;if(!cmd){toast('Select a command.','err');return;}
+  const opt=sel.options[sel.selectedIndex];
+  const args=JSON.parse(opt.dataset.args||'[]');
+  const argVals={};
+  args.filter(a=>a.type!=='player').forEach(a=>{argVals[a.name]=document.getElementById('arg_'+a.name)?.value||'';});
+  const d=await apiPost('/api/command',{command:cmd,userId:+document.getElementById('cmdUserId').value,username:document.getElementById('cmdUsername').value,args:argVals});
+  toast(d.message,d.ok?'ok':'err');closeModal('cmdModal');
+}
+
+refreshPlayers(); setInterval(refreshPlayers,8000);
+</script>
+{% endblock %}

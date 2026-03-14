@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SimpleAdmin — Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#06080f;--surf:#0f1524;--border:#1a2540;--accent:#00d4ff;--red:#ff3d5a;--text:#c4cfe0;--text2:#6a7a99;--white:#eef2ff;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.bg-grid{position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 48px,rgba(0,212,255,.015) 48px,rgba(0,212,255,.015) 49px),repeating-linear-gradient(90deg,transparent,transparent 48px,rgba(0,212,255,.015) 48px,rgba(0,212,255,.015) 49px);pointer-events:none;}
+.bg-glow{position:fixed;top:-15%;left:50%;transform:translateX(-50%);width:700px;height:500px;background:radial-gradient(ellipse,rgba(0,212,255,.07) 0%,transparent 70%);pointer-events:none;animation:gp 4s ease-in-out infinite;}
+@keyframes gp{0%,100%{opacity:.6}50%{opacity:1}}
+.wrap{position:relative;z-index:1;width:100%;max-width:420px;padding:1.5rem;}
+.card{background:var(--surf);border:1px solid var(--border);border-radius:8px;padding:2.75rem 2.5rem;position:relative;overflow:hidden;}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);}
+.logo{text-align:center;margin-bottom:2rem;}
+.logo-text{font-family:'Orbitron',sans-serif;font-weight:800;font-size:1.65rem;letter-spacing:.1em;color:var(--white);}
+.logo-text span{color:var(--accent);}
+.logo-sub{font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.18em;text-transform:uppercase;color:var(--text2);margin-top:.4rem;}
+.form-group{margin-bottom:.9rem;}
+.form-label{display:block;font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text2);margin-bottom:.4rem;}
+input{width:100%;background:#0a0e18;border:1px solid #1a2540;color:var(--text);padding:.65rem .9rem;border-radius:4px;font-family:'DM Mono',monospace;font-size:.88rem;outline:none;transition:border .2s;}
+input:focus{border-color:var(--accent);}
+input::placeholder{color:#3a4560;}
+.divider{border:none;border-top:1px solid var(--border);margin:1.25rem 0;}
+.btn{width:100%;background:transparent;border:1px solid var(--accent);color:var(--accent);padding:.7rem;border-radius:4px;font-family:'Orbitron',sans-serif;font-size:.8rem;font-weight:600;letter-spacing:.1em;cursor:pointer;transition:all .2s;margin-top:.25rem;}
+.btn:hover{background:var(--accent);color:#000;}
+.error{background:rgba(255,61,90,.08);border:1px solid rgba(255,61,90,.25);color:var(--red);padding:.65rem .9rem;border-radius:4px;font-family:'DM Mono',monospace;font-size:.78rem;margin-bottom:1rem;line-height:1.5;}
+.note{font-family:'DM Mono',monospace;font-size:.65rem;color:var(--text2);text-align:center;margin-top:1.5rem;}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+<div class="wrap">
+  <div class="card">
+    <div class="logo">
+      <div class="logo-text">SIMPLE<span>ADMIN</span></div>
+      <div class="logo-sub">Staff Dashboard</div>
+    </div>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" action="/">
+      <div class="form-group">
+        <label class="form-label">Admin Username</label>
+        <input type="text" name="username" placeholder="Enter admin username" autocomplete="off" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" name="password" placeholder="••••••••" required>
+      </div>
+      <hr class="divider">
+      <div class="form-group">
+        <label class="form-label">Your Discord Username</label>
+        <input type="text" name="discord" placeholder="e.g. yourname or yourname#0000" autocomplete="off" required>
+      </div>
+      <button type="submit" class="btn">SIGN IN →</button>
+    </form>
+  </div>
+  <div class="note">Login activity is logged and sent to Discord</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Search User — SimpleAdmin{% endblock %}
+{% block page_title %}Search User{% endblock %}
+{% block content %}
+
+<div class="card mb-6">
+  <div class="card-header">
+    <div class="card-title">Search Roblox User</div>
+  </div>
+  <div style="display:flex;gap:.75rem">
+    <input type="text" id="searchInput" placeholder="Enter Roblox username…" style="flex:1" onkeydown="if(event.key==='Enter')doSearch()">
+    <button class="btn btn-primary" onclick="doSearch()" id="searchBtn">Search</button>
+  </div>
+</div>
+
+<div id="resultArea"></div>
+
+<!-- BAN MODAL -->
+<div class="modal-overlay" id="banModal">
+  <div class="modal">
+    <div class="modal-title">🔨 Ban Player</div>
+    <input type="hidden" id="banUserId"><input type="hidden" id="banUsername">
+    <div class="form-group"><label class="form-label">Player</label><input type="text" id="banDisplayName" readonly style="opacity:.6"></div>
+    <div class="form-group"><label class="form-label">Reason</label><input type="text" id="banReason" placeholder="Enter reason…"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('banModal')">Cancel</button>
+      <button class="btn btn-danger" onclick="doBan()">Confirm Ban</button>
+    </div>
+  </div>
+</div>
+
+<!-- UNBAN MODAL -->
+<div class="modal-overlay" id="unbanModal">
+  <div class="modal">
+    <div class="modal-title">✅ Unban Player</div>
+    <input type="hidden" id="unbanUserId"><input type="hidden" id="unbanUsername">
+    <div class="form-group"><label class="form-label">Player</label><input type="text" id="unbanDisplayName" readonly style="opacity:.6"></div>
+    <div style="background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.2);border-radius:4px;padding:.75rem;font-family:'DM Mono',monospace;font-size:.72rem;color:var(--green);margin-bottom:.5rem;">This will remove the ban and allow them to rejoin.</div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('unbanModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="doUnban()">Confirm Unban</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
+
+async function doSearch(){
+  const q=document.getElementById('searchInput').value.trim();
+  if(!q)return;
+  document.getElementById('searchBtn').textContent='Searching…';
+  const d=await apiPost('/api/search_user',{query:q});
+  document.getElementById('searchBtn').textContent='Search';
+  const area=document.getElementById('resultArea');
+  if(!d.ok){area.innerHTML=`<div class="card"><div class="empty-state">${d.message}</div></div>`;return;}
+  const u=d.user;
+  const lvlN=['Guest','Donator','Mod','Admin','Owner','Dev'];
+  area.innerHTML=`
+    <div class="grid-2 mb-6">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Profile</div>
+          <div style="display:flex;gap:.5rem">
+            ${u.isBanned
+              ? `<button class="btn btn-primary btn-sm" onclick="openUnban(${u.id},'${u.name}')">Unban</button>`
+              : `<button class="btn btn-danger btn-sm" onclick="openBan(${u.id},'${u.name}')">Ban</button>`}
+            ${u.inGame ? `<button class="btn btn-orange btn-sm" onclick="kickFromSearch(${u.id},'${u.name}')">Kick</button>` : ''}
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.25rem">
+          <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-family:'Orbitron',sans-serif;font-size:1rem;font-weight:800;color:#000;flex-shrink:0">${(u.name||'?')[0].toUpperCase()}</div>
+          <div>
+            <div style="font-weight:700;font-size:1rem;color:var(--white)">${u.name}</div>
+            <div style="font-family:'DM Mono',monospace;font-size:.7rem;color:var(--text2)">${u.displayName} · ID ${u.id}</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:.5rem">
+          <div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--border)"><span style="color:var(--text2);font-size:.85rem">Status</span><span>${u.isBanned?'<span class="badge badge-red">BANNED</span>':'<span class="badge badge-green">OK</span>'}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--border)"><span style="color:var(--text2);font-size:.85rem">In Game</span><span class="mono">${u.inGame?'<span class="badge badge-green">YES</span>':'<span class="badge badge-yellow">NO</span>'}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--border)"><span style="color:var(--text2);font-size:.85rem">Account Created</span><span class="mono" style="font-size:.75rem;color:var(--text2)">${u.created?u.created.slice(0,10):'?'}</span></div>
+          ${u.inGame&&u.gameData?`
+          <div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--border)"><span style="color:var(--text2);font-size:.85rem">Health</span><span class="mono">${u.gameData.health??'?'}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--border)"><span style="color:var(--text2);font-size:.85rem">Ping</span><span class="mono">${u.gameData.ping!=null?Math.ceil(u.gameData.ping)+'ms':'?'}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:.4rem 0"><span style="color:var(--text2);font-size:.85rem">Level</span><span class="mono">${lvlN[u.gameData.level||0]||'?'}</span></div>`:''}
+        </div>
+        ${u.description?`<div style="margin-top:1rem;padding:.75rem;background:var(--bg2);border-radius:4px;font-family:'DM Mono',monospace;font-size:.72rem;color:var(--text2);line-height:1.6">${u.description.slice(0,200)}</div>`:''}
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">Recent Actions</div></div>
+        ${u.recentActions.length?`
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Action</th><th>Moderator</th><th>Time</th></tr></thead>
+            <tbody>${u.recentActions.map(a=>`<tr>
+              <td>${a.action.includes('BAN')?'<span class="badge badge-red">'+a.action+'</span>':a.action.includes('KICK')?'<span class="badge badge-orange">'+a.action+'</span>':'<span class="badge badge-blue">'+a.action+'</span>'}</td>
+              <td class="mono">${a.moderator}</td>
+              <td class="mono" style="color:var(--text2)">${a.time}</td>
+            </tr>`).join('')}</tbody>
+          </table>
+        </div>`:'<div class="empty-state">No recent actions for this user.</div>'}
+      </div>
+    </div>
+  `;
+}
+
+// Kick directly from search result
+async function kickFromSearch(uid,name){
+  const reason=prompt('Kick reason for '+name+':','Kicked by admin');
+  if(reason===null)return;
+  const d=await apiPost('/api/kick',{userId:uid,username:name,reason});
+  toast(d.message,d.ok?'ok':'err');
+}
+
+function openBan(uid,name){document.getElementById('banUserId').value=uid;document.getElementById('banUsername').value=name;document.getElementById('banDisplayName').value=name;document.getElementById('banReason').value='';openModal('banModal');}
+function openUnban(uid,name){document.getElementById('unbanUserId').value=uid;document.getElementById('unbanUsername').value=name;document.getElementById('unbanDisplayName').value=name;openModal('unbanModal');}
+
+async function doBan(){
+  const d=await apiPost('/api/ban',{userId:+document.getElementById('banUserId').value,username:document.getElementById('banUsername').value,reason:document.getElementById('banReason').value||'Banned by admin'});
+  toast(d.message,d.ok?'ok':'err');closeModal('banModal');
+  setTimeout(()=>doSearch(),1000);
+}
+async function doUnban(){
+  const d=await apiPost('/api/unban',{userId:+document.getElementById('unbanUserId').value,username:document.getElementById('unbanUsername').value});
+  toast(d.message,d.ok?'ok':'err');closeModal('unbanModal');
+  setTimeout(()=>doSearch(),1000);
+}
+</script>
+{% endblock %}

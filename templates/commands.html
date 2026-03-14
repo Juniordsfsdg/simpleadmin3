@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Commands — SimpleAdmin{% endblock %}
+{% block page_title %}Commands{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Scanned Game Commands</div>
+    <div style="display:flex;align-items:center;gap:.75rem">
+      <input type="text" id="cmdSearch" placeholder="Search…" style="width:200px" oninput="filterCmds()">
+      <span class="badge badge-blue mono">{{ commands|length }} total</span>
+    </div>
+  </div>
+  {% if not commands %}
+  <div class="empty-state">No commands synced yet.<br>Make sure WebBridge is running in your game.</div>
+  {% else %}
+  <div class="table-wrap">
+    <table id="cmdTable">
+      <thead><tr><th>Name</th><th>Aliases</th><th>Level</th><th>Category</th><th>Description</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for cmd in commands %}
+        <tr>
+          <td style="font-weight:700;color:var(--white);font-family:'DM Mono',monospace">{{ cmd.name }}</td>
+          <td class="mono" style="color:var(--text2);font-size:.72rem">{{ (cmd.aliases or [])|join(', ') or '—' }}</td>
+          <td>
+            {% set lvl = cmd.level or 0 %}
+            <span class="badge {% if lvl>=4 %}badge-red{% elif lvl>=3 %}badge-orange{% elif lvl>=2 %}badge-yellow{% elif lvl>=1 %}badge-blue{% else %}badge-green{% endif %}">
+              {{ lvl }} — {{ ['Guest','Donor','Mod','Admin','Owner','Dev'][lvl] if lvl<=5 else lvl }}
+            </span>
+          </td>
+          <td class="mono" style="font-size:.75rem">{{ cmd.category or '—' }}</td>
+          <td style="color:var(--text2);font-size:.84rem">{{ cmd.description or '—' }}</td>
+          <td>{% if cmd.disabled %}<span class="badge badge-red">Disabled</span>{% else %}<span class="badge badge-green">Active</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function filterCmds(){
+  const q=document.getElementById('cmdSearch').value.toLowerCase();
+  document.querySelectorAll('#cmdTable tbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});
+}
+</script>
+{% endblock %}

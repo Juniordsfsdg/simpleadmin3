@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Action Logs — SimpleAdmin{% endblock %}
+{% block page_title %}Action Logs{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Moderation Log</div>
+    <div style="display:flex;align-items:center;gap:.75rem">
+      <input type="text" id="searchInput" placeholder="Filter…" style="width:200px" oninput="filterTable()">
+      <span class="badge badge-blue mono">{{ logs|length }} entries</span>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table id="logTable">
+      <thead><tr><th>Action</th><th>Target</th><th>Reason</th><th>Moderator</th><th>Discord</th><th>Time</th></tr></thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td>
+            {% set a = log.action|upper %}
+            {% if 'BAN' in a and 'UN' not in a %}<span class="badge badge-red">{{ log.action }}</span>
+            {% elif 'KICK' in a %}<span class="badge badge-orange">{{ log.action }}</span>
+            {% elif 'UNBAN' in a %}<span class="badge badge-green">{{ log.action }}</span>
+            {% elif 'RANK' in a %}<span class="badge badge-blue">{{ log.action }}</span>
+            {% else %}<span class="badge badge-yellow">{{ log.action }}</span>{% endif %}
+          </td>
+          <td style="font-weight:600;color:var(--white)">{{ log.target }}</td>
+          <td style="color:var(--text2);font-size:.85rem">{{ log.reason or '—' }}</td>
+          <td class="mono">{{ log.moderator }}</td>
+          <td class="mono" style="color:var(--text2)">{{ log.discord or '—' }}</td>
+          <td class="mono" style="color:var(--text2);font-size:.75rem">{{ log.time }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="empty-state">No logs yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function filterTable(){
+  const q=document.getElementById('searchInput').value.toLowerCase();
+  document.querySelectorAll('#logTable tbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});
+}
+setInterval(()=>location.reload(),30000);
+</script>
+{% endblock %}

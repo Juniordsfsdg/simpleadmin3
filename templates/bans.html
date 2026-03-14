@@ -1,0 +1,40 @@
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Banned Players</div>
+    <input type="text" id="searchInput" placeholder="Search…" style="inline-size:200px" oninput="filterTable()">
+  </div>
+  <div class="table-wrap">
+    <table id="banTable">
+      <thead><tr><th>Username</th><th>User ID</th><th>Reason</th><th>Moderator</th><th>Discord</th><th>Date</th><th>Action</th></tr></thead>
+      <tbody>
+        {% for b in bans %}
+        <tr>
+          <td style="font-weight:600;color:var(--white)">{{ b.username }}</td>
+          <td class="mono" style="color:var(--text2)">{{ b.userId }}</td>
+          <td>{{ b.reason }}</td>
+          <td class="mono">{{ b.moderator }}</td>
+          <td class="mono" style="color:var(--text2)">{{ b.discord }}</td>
+          <td class="mono" style="color:var(--text2);font-size:.75rem">{{ b.time }}</td>
+          <td><button class="btn btn-ghost btn-xs" onclick="doUnban({{ b.userId }},'{{ b.username }}')">Unban</button></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="empty-state">No bans on record.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function filterTable(){
+  const q=document.getElementById('searchInput').value.toLowerCase();
+  document.querySelectorAll('#banTable tbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});
+}
+async function doUnban(uid,name){
+  if(!confirm('Unban '+name+'?'))return;
+  const d=await apiPost('/api/unban',{userId:uid,username:name});
+  toast(d.message,d.ok?'ok':'err');
+  if(d.ok)setTimeout(()=>location.reload(),800);
+}
+</script>

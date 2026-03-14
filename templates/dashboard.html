@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Overview — SimpleAdmin{% endblock %}
+{% block page_title %}Overview{% endblock %}
+{% block content %}
+<div class="stats-grid">
+  <div class="stat-card" style="--accent-color:var(--accent)">
+    <div class="stat-label">Players Online</div>
+    <div class="stat-value" id="sPlayers">{{ player_count }}</div>
+    <div class="stat-sub">live in game</div>
+  </div>
+  <div class="stat-card" style="--accent-color:var(--red)">
+    <div class="stat-label">Total Bans</div>
+    <div class="stat-value" id="sBans">{{ ban_count }}</div>
+    <div class="stat-sub">active bans</div>
+  </div>
+  <div class="stat-card" style="--accent-color:var(--green)">
+    <div class="stat-label">SA Commands</div>
+    <div class="stat-value" id="sCmds">{{ cmd_count }}</div>
+    <div class="stat-sub">scanned from game</div>
+  </div>
+  <div class="stat-card" style="--accent-color:var(--yellow)">
+    <div class="stat-label">Action Logs</div>
+    <div class="stat-value" id="sLogs">—</div>
+    <div class="stat-sub">moderation events</div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Recent Actions</div>
+      <a href="/logs" class="btn btn-ghost btn-sm">View all</a>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Action</th><th>Target</th><th>Moderator</th><th>Discord</th><th>Time</th></tr></thead>
+        <tbody>
+          {% for log in recent_actions %}
+          <tr>
+            <td>
+              {% if 'BAN' in log.action %}<span class="badge badge-red">{{ log.action }}</span>
+              {% elif 'KICK' in log.action %}<span class="badge badge-orange">{{ log.action }}</span>
+              {% elif 'UNBAN' in log.action %}<span class="badge badge-green">{{ log.action }}</span>
+              {% else %}<span class="badge badge-blue">{{ log.action }}</span>{% endif %}
+            </td>
+            <td class="mono">{{ log.target }}</td>
+            <td class="mono">{{ log.moderator }}</td>
+            <td class="mono" style="color:var(--text2)">{{ log.discord }}</td>
+            <td class="mono" style="color:var(--text2)">{{ log.time[11:19] }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="empty-state">No actions yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Live Players</div>
+      <a href="/players" class="btn btn-ghost btn-sm">Manage</a>
+    </div>
+    <div id="livePlayers"><div class="empty-state">Waiting for game data…</div></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function refreshDash(){
+  const s=await fetch('/api/stats').then(r=>r.json());
+  document.getElementById('sPlayers').textContent=s.players;
+  document.getElementById('sBans').textContent=s.bans;
+  document.getElementById('sCmds').textContent=s.commands;
+  document.getElementById('sLogs').textContent=s.logs;
+  const p=await fetch('/api/players').then(r=>r.json());
+  const el=document.getElementById('livePlayers');
+  if(!p.players||!p.players.length){el.innerHTML='<div class="empty-state">No players online.</div>';return;}
+  const lvlNames=['Guest','Donator','Mod','Admin','Owner','Dev'];
+  const lvlClass=['badge-green','badge-yellow','badge-blue','badge-blue','badge-orange','badge-red'];
+  el.innerHTML=p.players.slice(0,8).map(pl=>`
+    <div style="display:flex;align-items:center;gap:.75rem;padding:.5rem 0;border-bottom:1px solid var(--border)">
+      <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-family:'Orbitron',sans-serif;font-size:.6rem;font-weight:800;color:#000;flex-shrink:0">${(pl.name||'?')[0].toUpperCase()}</div>
+      <div style="flex:1"><div style="font-weight:600;font-size:.88rem;color:var(--white)">${pl.name||'?'}</div><div style="font-family:'DM Mono',monospace;font-size:.63rem;color:var(--text2)">ID: ${pl.userId||'?'}</div></div>
+      <span class="badge ${lvlClass[pl.level||0]||'badge-green'}">${lvlNames[pl.level||0]||'Guest'}</span>
+    </div>`).join('')+(p.players.length>8?`<div style="text-align:center;padding:.5rem;font-family:'DM Mono',monospace;font-size:.68rem;color:var(--text2)">+${p.players.length-8} more</div>`:'');
+}
+refreshDash(); setInterval(refreshDash,8000);
+</script>
+{% endblock %}
